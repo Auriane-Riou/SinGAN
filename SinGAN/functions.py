@@ -277,6 +277,10 @@ def generate_dir2save(opt):
         dir2save = '%s/Paint2image/%s/%s_out' % (opt.out, opt.input_name[:-4],opt.ref_name[:-4])
         if opt.quantization_flag:
             dir2save = '%s_quantized' % dir2save
+
+    elif opt.mode == 'inpainting':
+        dir2save = '%s/Inpainting/%s/%s_out' % (opt.out, opt.input_name[:-4], opt.ref_name[:-4])
+
     return dir2save
 
 def post_config(opt):
