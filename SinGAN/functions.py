@@ -21,23 +21,28 @@ def read_image(opt):
     x = img.imread('%s%s' % (opt.input_img,opt.ref_image))
     return np2torch(x)
 
+
 def denorm(x):
     out = (x + 1) / 2
     return out.clamp(0, 1)
 
+
 def norm(x):
     out = (x -0.5) *2
     return out.clamp(-1, 1)
+
 
 #def denorm2image(I1,I2):
 #    out = (I1-I1.mean())/(I1.max()-I1.min())
 #    out = out*(I2.max()-I2.min())+I2.mean()
 #    return out#.clamp(I2.min(), I2.max())
 
+
 #def norm2image(I1,I2):
 #    out = (I1-I2.mean())*2
 #    return out#.clamp(I2.min(), I2.max())
 
+# useful to display image
 def convert_image_np(inp):
     if inp.shape[1]==3:
         inp = denorm(inp)
@@ -53,6 +58,7 @@ def convert_image_np(inp):
     inp = np.clip(inp,0,1)
     return inp
 
+
 def save_image(real_cpu,receptive_feild,ncs,epoch_num,file_name):
     fig,ax = plt.subplots(1)
     if ncs==1:
@@ -66,6 +72,7 @@ def save_image(real_cpu,receptive_feild,ncs,epoch_num,file_name):
     plt.savefig(file_name)
     plt.close(fig)
 
+
 def convert_image_np_2d(inp):
     inp = denorm(inp)
     inp = inp.numpy()
@@ -73,6 +80,7 @@ def convert_image_np_2d(inp):
     # std = np.array([x/255.0 for x in [63.0,62.1,66.7]])
     # inp = std*
     return inp
+
 
 def generate_noise(size,num_samp=1,device='cuda',type='gaussian', scale=1):
     if type == 'gaussian':
@@ -86,6 +94,7 @@ def generate_noise(size,num_samp=1,device='cuda',type='gaussian', scale=1):
         noise = torch.randn(num_samp, size[0], size[1], size[2], device=device)
     return noise
 
+
 def plot_learning_curves(G_loss,D_loss,epochs,label1,label2,name):
     fig,ax = plt.subplots(1)
     n = np.arange(0,epochs)
@@ -97,6 +106,7 @@ def plot_learning_curves(G_loss,D_loss,epochs,label1,label2,name):
     plt.savefig('%s.png' % name)
     plt.close(fig)
 
+
 def plot_learning_curve(loss,epochs,name):
     fig,ax = plt.subplots(1)
     n = np.arange(0,epochs)
@@ -106,23 +116,28 @@ def plot_learning_curve(loss,epochs,name):
     plt.savefig('%s.png' % name)
     plt.close(fig)
 
+
 def upsampling(im,sx,sy):
     m = nn.Upsample(size=[round(sx),round(sy)],mode='bilinear',align_corners=True)
     return m(im)
+
 
 def reset_grads(model,require_grad):
     for p in model.parameters():
         p.requires_grad_(require_grad)
     return model
 
+
 def move_to_gpu(t):
     if (torch.cuda.is_available()):
         t = t.to(torch.device('cuda'))
     return t
 
+
 def move_to_cpu(t):
     t = t.to(torch.device('cpu'))
     return t
+
 
 def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     #print real_data.size()
@@ -146,17 +161,20 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
     return gradient_penalty
 
+
 def read_image(opt):
-    x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
-    x = np2torch(x,opt)
-    x = x[:,0:3,:,:]
+    x = img.imread('%s/%s' % (opt.input_dir, opt.input_name))
+    x = np2torch(x, opt)
+    x = x[:, 0:3, :, :]
     return x
+
 
 def read_image_dir(dir,opt):
     x = img.imread('%s' % (dir))
     x = np2torch(x,opt)
     x = x[:,0:3,:,:]
     return x
+
 
 def np2torch(x,opt):
     if opt.nc_im == 3:
@@ -174,6 +192,7 @@ def np2torch(x,opt):
     x = norm(x)
     return x
 
+
 def torch2uint8(x):
     x = x[0,:,:,:]
     x = x.permute((1,2,0))
@@ -182,24 +201,34 @@ def torch2uint8(x):
     x = x.astype(np.uint8)
     return x
 
+
 def read_image2np(opt):
-    x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
+    x = img.imread('%s/%s' % (opt.input_dir, opt.input_name))
     x = x[:, :, 0:3]
     return x
+
 
 def save_networks(netG,netD,z,opt):
     torch.save(netG.state_dict(), '%s/netG.pth' % (opt.outf))
     torch.save(netD.state_dict(), '%s/netD.pth' % (opt.outf))
     torch.save(z, '%s/z_opt.pth' % (opt.outf))
 
-def adjust_scales2image(real_,opt):
-    #opt.num_scales = int((math.log(math.pow(opt.min_size / (real_.shape[2]), 1), opt.scale_factor_init))) + 1
+
+def adjust_scales2image(real_, opt):
+    # opt.num_scales = int((math.log(math.pow(opt.min_size / (real_.shape[2]), 1), opt.scale_factor_init))) + 1
     opt.num_scales = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor_init))) + 1
+
+    # opt.stop_scale = number of scales
     scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
     opt.stop_scale = opt.num_scales - scale2stop
     opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
+
+    # computes adapted image size
     real = imresize(real_, opt.scale1, opt)
+
     #opt.scale_factor = math.pow(opt.min_size / (real.shape[2]), 1 / (opt.stop_scale))
+
+    # already defined ?
     opt.scale_factor = math.pow(opt.min_size/(min(real.shape[2],real.shape[3])),1/(opt.stop_scale))
     scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
     opt.stop_scale = opt.num_scales - scale2stop
@@ -218,17 +247,18 @@ def adjust_scales2image_SR(real_,opt):
     opt.stop_scale = opt.num_scales - scale2stop
     return real
 
-def creat_reals_pyramid(real,reals,opt):
-    real = real[:,0:3,:,:]
-    for i in range(0,opt.stop_scale+1,1):
-        scale = math.pow(opt.scale_factor,opt.stop_scale-i)
-        curr_real = imresize(real,scale,opt)
+
+def creat_reals_pyramid(real, reals, opt):
+    real = real[:, 0:3, :, :]
+    for i in range(0, opt.stop_scale+1, 1):
+        scale = math.pow(opt.scale_factor, opt.stop_scale-i)
+        curr_real = imresize(real, scale, opt)
         reals.append(curr_real)
     return reals
 
 
 def load_trained_pyramid(opt, mode_='train'):
-    #dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
+    # dir = 'TrainedModels/%s/scale_factor=%f' % (opt.input_name[:-4], opt.scale_factor_init)
     mode = opt.mode
     opt.mode = 'train'
     if (mode == 'animation_train') | (mode == 'SR_train') | (mode == 'paint_train'):
@@ -242,16 +272,18 @@ def load_trained_pyramid(opt, mode_='train'):
     else:
         print('no appropriate trained model is exist, please train first')
     opt.mode = mode
-    return Gs,Zs,reals,NoiseAmp
+    return Gs, Zs, reals, NoiseAmp
 
-def generate_in2coarsest(reals,scale_v,scale_h,opt):
+
+def generate_in2coarsest(reals, scale_v, scale_h, opt):
     real = reals[opt.gen_start_scale]
     real_down = upsampling(real, scale_v * real.shape[2], scale_h * real.shape[3])
     if opt.gen_start_scale == 0:
         in_s = torch.full(real_down.shape, 0, device=opt.device)
-    else: #if n!=0
+    else: # if n!=0
         in_s = upsampling(real_down, real_down.shape[2], real_down.shape[3])
     return in_s
+
 
 def generate_dir2save(opt):
     dir2save = None

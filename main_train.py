@@ -26,6 +26,7 @@ if __name__ == '__main__':
             os.makedirs(dir2save)
         except OSError:
             pass
+
         real = functions.read_image(opt)
         functions.adjust_scales2image(real, opt)
         train(opt, Gs, Zs, reals, NoiseAmp)
