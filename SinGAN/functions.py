@@ -13,12 +13,35 @@ from SinGAN.imresize import imresize
 import os
 import random
 from sklearn.cluster import KMeans
-
+import cv2
 
 # custom weights initialization called on netG and netD
 
+def computes_mask_inpainting(opt):
+    source_img = img.imread('%s/%s' % (opt.input_dir, opt.input_name))
+
+    x1, x2 = opt.x1_mask, opt.x2_mask
+    y1, y2 = opt.y1_mask, opt.y2_mask
+
+    mask = np.zeros((source_img.shape[0], source_img.shape[1], 3))
+    mask.fill(255)
+
+    for i in range(int(source_img.shape[0]*x1), int(source_img.shape[0]*x2)):
+        for j in range(int(source_img.shape[1]*y1), int(source_img.shape[1]*y2)):
+            mask[i, j] = [0, 0, 0]
+
+    mask = mask/255
+    mask = torch.from_numpy(mask)
+    mask = mask[:, :, :, None]
+    mask = mask.permute((3, 2, 0, 1))
+
+    plt.imshow(convert_image_np(mask))
+    plt.show()
+    return mask
+
+
 def read_image(opt):
-    x = img.imread('%s%s' % (opt.input_img,opt.ref_image))
+    x = img.imread('%s%s' % (opt.input_img, opt.ref_image))
     return np2torch(x)
 
 
@@ -176,9 +199,9 @@ def read_image_dir(dir,opt):
     return x
 
 
-def np2torch(x,opt):
+def np2torch(x, opt):
     if opt.nc_im == 3:
-        x = x[:,:,:,None]
+        x = x[:, :, :, None]
         x = x.transpose((3, 2, 0, 1))/255
     else:
         x = color.rgb2gray(x)

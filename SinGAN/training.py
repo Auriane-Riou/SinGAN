@@ -7,10 +7,16 @@ import torch.utils.data
 import math
 import matplotlib.pyplot as plt
 from SinGAN.imresize import imresize
+from SinGAN.functions import computes_mask_inpainting
 
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
     real_ = functions.read_image(opt)
+
+    if opt.inpainting:
+        # computes mask for occluded area
+        mask = computes_mask_inpainting(opt)
+
     in_s = 0
     scale_num = 0
     real = imresize(real_, opt.scale1, opt)
@@ -18,6 +24,16 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
     # list of properly scaled image
     reals = functions.creat_reals_pyramid(real, reals, opt)
     nfc_prev = 0
+
+    if opt.inpainting:
+        mask = imresize(mask, opt.scale1, opt)
+        opt.masks = functions.creat_reals_pyramid(mask, [], opt)
+
+    # plt.imshow(functions.convert_image_np(reals[-1]*opt.masks[-1]))
+    # plt.show()
+
+    # plt.imshow(functions.convert_image_np(reals[1] * opt.masks[1]))
+    # plt.show()
 
     while scale_num < opt.stop_scale+1:
         opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
@@ -140,7 +156,13 @@ def train_single_scale(netD, netG, reals, Gs, Zs, in_s, NoiseAmp, opt, centers=N
             # train with real
             netD.zero_grad()
 
-            output = netD(real).to(opt.device)
+            if opt.inpainting:
+                mask = opt.masks[len(Gs)]
+                output = netD(mask * real).to(opt.device)
+            else:
+                output = netD(real).to(opt.device)
+            # output = netD(real).to(opt.device)
+
             # D_real_map = output.detach()
             errD_real = -output.mean()#-a
             errD_real.backward(retain_graph=True)
@@ -198,12 +220,20 @@ def train_single_scale(netD, netG, reals, Gs, Zs, in_s, NoiseAmp, opt, centers=N
 
             # output of generator
             fake = netG(noise.detach(), prev)
-            output = netD(fake.detach())
+            #output = netD(fake.detach())
+            if opt.inpainting:
+                output = netD((mask * fake).detach())
+            else:
+                output = netD(fake.detach())
             errD_fake = output.mean()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
-            gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device)
+            if opt.inpainting:
+                gradient_penalty = functions.calc_gradient_penalty(netD, mask * real, mask * fake, opt.lambda_grad,                                                       opt.device)
+            else:
+                gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device)
+            # gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device)
             gradient_penalty.backward()
 
             errD = errD_real + errD_fake + gradient_penalty
@@ -217,7 +247,11 @@ def train_single_scale(netD, netG, reals, Gs, Zs, in_s, NoiseAmp, opt, centers=N
 
         for j in range(opt.Gsteps):
             netG.zero_grad()
-            output = netD(fake)
+            if opt.inpainting:
+                output = netD(mask * fake)
+            else:
+                output = netD(fake)
+            #output = netD(fake)
             # D_fake_map = output.detach()
             errG = -output.mean()
             errG.backward(retain_graph=True)
