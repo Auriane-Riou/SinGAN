@@ -18,26 +18,21 @@ import cv2
 # custom weights initialization called on netG and netD
 
 def computes_mask_inpainting(opt):
+
     source_img = img.imread('%s/%s' % (opt.input_dir, opt.input_name))
 
     x1, x2 = opt.x1_mask, opt.x2_mask
     y1, y2 = opt.y1_mask, opt.y2_mask
 
     mask = np.zeros((source_img.shape[0], source_img.shape[1], 3))
-    mask.fill(255)
+    #mask.fill(255)
 
     for i in range(int(source_img.shape[0]*x1), int(source_img.shape[0]*x2)):
         for j in range(int(source_img.shape[1]*y1), int(source_img.shape[1]*y2)):
-            mask[i, j] = [0, 0, 0]
+            mask[i, j] = [255, 255, 255]
 
-    mask = mask/255
-    mask = torch.from_numpy(mask)
-    mask = mask[:, :, :, None]
-    mask = mask.permute((3, 2, 0, 1))
-
-    plt.imshow(convert_image_np(mask))
-    plt.show()
-    return mask
+    mask = mask.astype('uint8')
+    plt.imsave('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]), mask, vmin=0, vmax=1)
 
 
 def read_image(opt):
@@ -288,10 +283,17 @@ def load_trained_pyramid(opt, mode_='train'):
         opt.mode = mode
     dir = generate_dir2save(opt)
     if(os.path.exists(dir)):
-        Gs = torch.load('%s/Gs.pth' % dir)
-        Zs = torch.load('%s/Zs.pth' % dir)
-        reals = torch.load('%s/reals.pth' % dir)
-        NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir)
+        if opt.not_cuda:
+            Gs = torch.load('%s/Gs.pth' % dir, map_location=torch.device('cpu'))
+            Zs = torch.load('%s/Zs.pth' % dir, map_location=torch.device('cpu'))
+            reals = torch.load('%s/reals.pth' % dir, map_location=torch.device('cpu'))
+            NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir, map_location=torch.device('cpu'))
+        else:
+            Gs = torch.load('%s/Gs.pth' % dir)
+            Zs = torch.load('%s/Zs.pth' % dir)
+            reals = torch.load('%s/reals.pth' % dir)
+            NoiseAmp = torch.load('%s/NoiseAmp.pth' % dir)
+
     else:
         print('no appropriate trained model is exist, please train first')
     opt.mode = mode
@@ -399,6 +401,8 @@ def dilate_mask(mask,opt):
         element = morphology.disk(radius=7)
     if opt.mode == "editing":
         element = morphology.disk(radius=20)
+    if opt.mode == "inpainting":
+        element = morphology.disk(radius=opt.radius)
     mask = torch2uint8(mask)
     mask = mask[:,:,0]
     mask = morphology.binary_dilation(mask,selem=element)

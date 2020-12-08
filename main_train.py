@@ -14,8 +14,8 @@ if __name__ == '__main__':
     parser.add_argument('--x2_mask', type=float, help='upper x bound for occlusion in inpainting', default=0.5)
     parser.add_argument('--y1_mask', type=float, help='lower y bound for occlusion in inpainting', default=0.3)
     parser.add_argument('--y2_mask', type=float, help='upper y bound for occlusion in inpainting', default=0.5)
+    parser.add_argument('--ref_dir', help='inpainting reference dir', default='Input/Inpainting')
 
-    # parser.add_argument('--ref_dir', help='input reference dir', default='Input/Inpainting')
     opt = parser.parse_args()
     print(opt)
     opt = functions.post_config(opt)
