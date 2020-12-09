@@ -17,19 +17,111 @@ import cv2
 
 # custom weights initialization called on netG and netD
 
+
+def resize_with_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
+    """
+    Resizes image to a specific size while maintaining aspect ratio
+    https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+    Args:
+        image:
+        width:
+        height:
+        inter:
+
+    Returns:
+
+    """
+    dim = None
+    (h, w) = image.shape[:2]
+
+    if width is None and height is None:
+        return image
+    if width is None:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    else:
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    return cv2.resize(image, dim, interpolation=inter)
+
+
+def get_occluded_area(image, opt):
+    """
+    Lets user choose input rectangles for areas to occlude
+    https://chercher.tech/opencv/drawing-mouse-images-opencv
+    Args:
+        image:
+
+    Returns:
+
+    """
+    # variables
+    ix = -1
+    iy = -1
+    drawing= False
+    opt.occlusions = []
+    # dimensions of original image
+    h_real, w_real = image.shape[:2]
+
+    def draw_rectangle_with_drag(event, x, y, flags, param):
+        global ix, iy, drawing
+
+        if event == cv2.EVENT_LBUTTONDOWN:
+            drawing = True
+            ix = x
+            iy = y
+
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if drawing == True:
+                cv2.rectangle(image, pt1=(ix, iy), pt2=(x, y), color=(0, 255, 255), thickness=-1)
+
+        elif event == cv2.EVENT_LBUTTONUP:
+            drawing = False
+            cv2.rectangle(image, pt1=(ix, iy), pt2=(x, y), color=(0, 255, 255), thickness=-1)
+            # dimensions of resized image
+            h_reduced, w_reduced = image.shape[:2]
+
+            # readjust to corresonding position in original image
+            opt.occlusions.append([ix * (h_real/h_reduced), iy * (w_real/w_reduced), x * (h_real/h_reduced), y * (w_real/w_reduced)])
+
+    cv2.namedWindow(winname="Original image")
+    cv2.setMouseCallback("Original image", draw_rectangle_with_drag)
+
+    while True:
+        cv2.imshow("Original image", image)
+        image = resize_with_aspect_ratio(image, width=1000)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        bottom_left_corner = (10, image.shape[0] - 10)
+        cv2.putText(image, 'Please select areas for inpainting, then press escape', bottom_left_corner, font, 1, (255, 255, 255), 2)
+        if cv2.waitKey(10) == 27:
+            break
+    cv2.destroyAllWindows()
+
+
 def computes_mask_inpainting(opt):
+    """
+    Saves mask image according to occluded areas selected by the user
+    Args:
+        opt:
+
+    Returns:
+
+    """
 
     source_img = img.imread('%s/%s' % (opt.input_dir, opt.input_name))
 
-    x1, x2 = opt.x1_mask, opt.x2_mask
-    y1, y2 = opt.y1_mask, opt.y2_mask
-
     mask = np.zeros((source_img.shape[0], source_img.shape[1], 3))
-    #mask.fill(255)
 
-    for i in range(int(source_img.shape[0]*x1), int(source_img.shape[0]*x2)):
-        for j in range(int(source_img.shape[1]*y1), int(source_img.shape[1]*y2)):
-            mask[i, j] = [255, 255, 255]
+    # we fill white squares corresponding to the different occluded areas
+    for occlusion in opt.occlusions:
+
+        x1, x2 = occlusion[1], occlusion[3]
+        y1, y2 = occlusion[0], occlusion[2]
+
+        for i in range(int(x1), int(x2)):
+            for j in range(int(y1), int(y2)):
+                mask[i, j] = [255, 255, 255]
 
     mask = mask.astype('uint8')
     plt.imsave('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]), mask, vmin=0, vmax=1)

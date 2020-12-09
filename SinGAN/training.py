@@ -7,14 +7,22 @@ import torch.utils.data
 import math
 import matplotlib.pyplot as plt
 from SinGAN.imresize import imresize
+from skimage import io as img
 from SinGAN.functions import computes_mask_inpainting
-
+import cv2
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
     real_ = functions.read_image(opt)
 
+    print("real", real_.shape)
+
     if opt.inpainting:
-        # saves mask image for occluded area
+        source_img = cv2.imread('%s/%s' % (opt.input_dir, opt.input_name))
+
+        # lets user select areas to occlude
+        functions.get_occluded_area(source_img, opt)
+
+        # saves mask image corresponding to those occluded areas
         computes_mask_inpainting(opt)
 
         mask = functions.read_image_dir('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]), opt)
