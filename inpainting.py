@@ -79,10 +79,10 @@ def main_inpainting(raw_args=None):
 
             real_occluded_np = functions.convert_image_np(real_occluded)
             plt.imsave(
-                '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.ref_name[-4:]),
+                '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.input_name[-4:]),
                 real_occluded_np, vmin=0, vmax=1)
             ref = functions.read_image_dir(
-                '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.ref_name[-4:]),
+                '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.input_name[-4:]),
                 opt)
 
             # saving occluded image in output folder for comparison

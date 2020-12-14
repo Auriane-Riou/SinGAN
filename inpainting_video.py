@@ -48,7 +48,7 @@ if __name__ == '__main__':
     model_mask.eval()
 
 
-    def automated_person_detection(source_video):
+    def automated_person_detection(source_video, frame_count):
         """
         Saves for each frame of the video a binary mask
         The mask corresponds to the occlusion of detected person (using a pretrained mask RCNN model)
@@ -64,11 +64,9 @@ if __name__ == '__main__':
         if not cap.isOpened():
             print("Error opening video stream or file")
 
-        frame_count = 0
 
         # read until video is completed
-
-        while cap.isOpened():  # and frame_count < 10:
+        while cap.isOpened() and frame_count < 20:
             # capture frame-by-frame
             ret, frame = cap.read()
 
@@ -141,16 +139,18 @@ if __name__ == '__main__':
         # closes all the frames
         cv2.destroyAllWindows()
 
+        return frame_count
 
+
+    frame_count = 0
     print("Start of person mask computing for video")
-    automated_person_detection("%s/%s" % (opt.input_dir, opt.input_name))
+    frame_count = automated_person_detection("%s/%s" % (opt.input_dir, opt.input_name), frame_count)
     print("End of person mask computing for video")
 
     # number of masks corresponds to number of frames
     # (more generally this would be number of frames in initial video)
-    nb_masked_frames = len(os.listdir('%s/%s/' % (opt.ref_dir, opt.input_name[:-4]))) // 2
 
-    for i in range(nb_masked_frames):
+    for i in range(frame_count):
 
         # training is performed on the first frame only
         if i == 0:
@@ -174,7 +174,8 @@ if __name__ == '__main__':
                            "--ref_dir","Input/Inpainting/Videos/%s" % (opt.input_name[:-4]),
                            "--inpainting_start_scale", str(opt.inpainting_start_scale),
                            "--initialization", opt.initialization,
-                           "--mode", opt.mode
+                           "--mode", opt.mode,
+                           "--ref_name", opt.ref_name
                            ]
 
         if opt.not_cuda:
@@ -183,7 +184,7 @@ if __name__ == '__main__':
         inpainting.main_inpainting(inpainting_args)
 
     img_array = []
-    for i in range(nb_masked_frames):
+    for i in range(frame_count):
         dir2save = '%s/Inpainting/%s/%s_%d' % (opt.out, opt.input_name[:-4], opt.ref_name[:-4], i)
         path_to_image = '%s/start_scale=%d_init=%s_inpainted.png' % (dir2save, opt.inpainting_start_scale, opt.initialization)
 
