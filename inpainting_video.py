@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
 
         # read until video is completed
-        while cap.isOpened() and frame_count < 20:
+        while cap.isOpened():  # and frame_count < 20:
             # capture frame-by-frame
             ret, frame = cap.read()
 
