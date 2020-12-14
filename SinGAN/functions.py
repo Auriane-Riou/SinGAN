@@ -377,7 +377,9 @@ def load_trained_pyramid(opt, mode_='train'):
 
     # for video inpainting, we load the model trained on the first image
     if mode == "inpainting_video":
-        dir = 'TrainedModels/%s%d/scale_factor=%f,alpha=%d' % (opt.input_name[:-5], 0, opt.scale_factor_init, opt.alpha)
+
+        dir = 'TrainedModels/%s_%d/scale_factor=%f,alpha=%d' % (opt.ref_name[:-4], 0, opt.scale_factor_init, opt.alpha)
+
     else:
         dir = generate_dir2save(opt)
 
@@ -435,7 +437,7 @@ def generate_dir2save(opt):
             dir2save = '%s_quantized' % dir2save
 
     elif (opt.mode == 'inpainting') | (opt.mode == 'inpainting_video'):
-        dir2save = '%s/Inpainting/%s/%s' % (opt.out, opt.input_name[:-6], opt.ref_name[:-4])
+        dir2save = '%s/Inpainting/%s/%s' % (opt.out, opt.ref_name[:-4], opt.input_name[:-4])
 
     return dir2save
 
