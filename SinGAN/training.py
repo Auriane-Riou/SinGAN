@@ -47,11 +47,11 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
         mask = imresize(mask, opt.scale1, opt)
         opt.masks = functions.creat_reals_pyramid(mask, [], opt)
 
-    # plt.imshow(functions.convert_image_np(reals[-1]*(1 - opt.masks[-1])))
-    # plt.show()
+    #plt.imshow(functions.convert_image_np(reals[-1]*(1 - opt.masks[-1])))
+    #plt.show()
 
-    # plt.imshow(functions.convert_image_np(reals[1] * (1 - opt.masks[1])))
-    # plt.show()
+    #plt.imshow(functions.convert_image_np(reals[1] * (1 - opt.masks[1])))
+    #plt.show()
 
     while scale_num < opt.stop_scale+1:
         opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)

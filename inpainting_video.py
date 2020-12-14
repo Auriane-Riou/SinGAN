@@ -5,7 +5,7 @@ import SinGAN.functions as functions
 import cv2
 import torchvision as tv
 import main_train
-
+import inpainting
 
 if __name__ == '__main__':
     parser = get_arguments()
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_name', help='training video name', required=True)
     parser.add_argument('--ref_dir', help='input reference dir', default='Input/Inpainting/Videos')
     parser.add_argument('--inpainting_start_scale', help='inpainting injection scale', type=int, required=True)
-    parser.add_argument('--mode', help='task to be done', default='inpainting')
+    parser.add_argument('--mode', help='task to be done', default='inpainting_video')
     parser.add_argument('--radius', help='radius harmonization', type=int, default=10)
     parser.add_argument('--ref_name', help='training video name', type=str, default="")
     parser.add_argument('--initialization', help='initialization technique', type=str, default="mean")
@@ -23,9 +23,10 @@ if __name__ == '__main__':
     if opt.ref_name == "":
         opt.ref_name = opt.input_name
 
-    if not os.path.exists('%s/%s/' % (opt.ref_dir, opt.input_name)):
-        os.makedirs('%s/%s/' % (opt.ref_dir, opt.input_name))
+    opt.input_dir += "/%s" % (opt.input_name[:-4])
 
+    if not os.path.exists('%s/%s/' % (opt.ref_dir, opt.input_name[:-4])):
+        os.makedirs('%s/%s/' % (opt.ref_dir, opt.input_name[:-4]))
 
     COCO_CLASS_NAMES = [
         '__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
@@ -46,6 +47,7 @@ if __name__ == '__main__':
     model_mask = tv.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
     model_mask.eval()
 
+
     def automated_person_detection(source_video):
         """
         Saves for each frame of the video a binary mask
@@ -65,17 +67,16 @@ if __name__ == '__main__':
         frame_count = 0
 
         # read until video is completed
-        # we select here only the first frames for testing purposes
-        while cap.isOpened() and frame_count < 10:
+
+        while cap.isOpened():  # and frame_count < 10:
             # capture frame-by-frame
             ret, frame = cap.read()
 
             if ret:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 # we check if mask for this frame has already been computed
-                # and if initial mask frame and initial frame have been saved
-                if not os.path.exists('%s/%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name, opt.input_name[:-4],
-                                                              frame_count, ".jpg")) or frame_count == 0 and (not os.path.exists('%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name[:-4], frame_count, ".jpg")) or
-                not os.path.exists('%s/%s_%d%s' % (opt.input_dir, opt.input_name[:-4], frame_count,  ".jpg"))):
+                if not os.path.exists('%s/%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[:-4],
+                                                              frame_count, ".png")):
 
                     occlusions = []
                     transform = transforms.Compose([transforms.ToTensor()])
@@ -83,9 +84,6 @@ if __name__ == '__main__':
                     img = transform(frame)
                     pred = model_mask([img])
                     pred_score = list(pred[0]['scores'].detach().numpy())
-
-                    # we check if there is at least one viable object detection prediction
-                    #if ([pred_score.index(x) for x in pred_score if x > 0.7] != []):
 
                     pred_t = [pred_score.index(x) for x in pred_score if x > 0.7][-1]
                     masks = (pred[0]['masks'] > 0.5).squeeze().detach().cpu().numpy()
@@ -97,11 +95,10 @@ if __name__ == '__main__':
                     pred_boxes = pred_boxes[:pred_t + 1]
                     pred_class = pred_class[:pred_t + 1]
 
-                    # we check if there is a bird amongst detected objects
+                    # we check if there are persons amongst detected objects
                     for i in range(len(pred_boxes)):
 
                         if pred_class[i] == "person":
-
                             x1, y1, x2, y2 = pred_boxes[i][0][0], pred_boxes[i][0][1], pred_boxes[i][1][0], \
                                              pred_boxes[i][1][1]
 
@@ -119,15 +116,11 @@ if __name__ == '__main__':
                                 mask[i, j] = [255, 255, 255]
 
                     mask = mask.astype('uint8')
-                    plt.imsave('%s/%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name, opt.input_name[:-4], frame_count,".jpg"), mask, vmin=0, vmax=1)
 
-                    # first frame
-                    # we save the frame and its mask in specific folders to call main train
-                    # (training is made on first frame only)
-                    if frame_count == 0:
-                        plt.imsave('%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name[:-4], frame_count, ".jpg"), mask, vmin=0, vmax=1)
-                        cv2.imwrite('%s/%s_%d%s' % (opt.input_dir, opt.input_name[:-4], frame_count,  ".jpg"), frame)
-
+                    plt.imsave('%s/%s/%s_%d_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[:-4],
+                                                       frame_count, ".png"), mask, vmin=0, vmax=1)
+                    plt.imsave('%s/%s_%d%s' % (opt.input_dir, opt.input_name[:-4], frame_count, ".png"), frame, vmin=0,
+                               vmax=1)
 
                     frame_count += 1
 
@@ -150,26 +143,57 @@ if __name__ == '__main__':
 
 
     print("Start of person mask computing for video")
-    automated_person_detection("Input/Videos/kj.mp4")
+    automated_person_detection("%s/%s" % (opt.input_dir, opt.input_name))
     print("End of person mask computing for video")
 
-    print("Start of training")
+    # number of masks corresponds to number of frames
+    # (more generally this would be number of frames in initial video)
+    nb_masked_frames = len(os.listdir('%s/%s/' % (opt.ref_dir, opt.input_name[:-4]))) // 2
 
-    main_train_args = ["--input_dir", "Input/Videos",
-                       "--input_name", '%s_%d%s' % (opt.input_name[:-4], 0,  ".jpg"),
-                       "--inpainting",
-                       "--ref_dir", "Input/Inpainting/Videos"
-                      ]
-    if opt.not_cuda:
-        main_train_args.append("--not_cuda")
+    for i in range(nb_masked_frames):
 
-    main_train.main(main_train_args)
+        # training is performed on the first frame only
+        if i == 0:
+            print("Start of training")
 
-    print("End of training")
+            main_train_args = ["--input_dir", opt.input_dir,
+                               "--input_name", '%s_%d%s' % (opt.input_name[:-4], 0, ".png"),
+                               "--inpainting",
+                               "--ref_dir", "Input/Inpainting/Videos/%s" % (opt.input_name[:-4])
+                               ]
+            if opt.not_cuda:
+                main_train_args.append("--not_cuda")
 
+            main_train.main(main_train_args)
 
+            print("End of training")
 
+        print("Inpainting of image %d" % (i))
+        inpainting_args = ["--input_dir", opt.input_dir,
+                           "--input_name", '%s_%d%s' % (opt.input_name[:-4], i, ".png"),
+                           "--ref_dir","Input/Inpainting/Videos/%s" % (opt.input_name[:-4]),
+                           "--inpainting_start_scale", str(opt.inpainting_start_scale),
+                           "--initialization", opt.initialization,
+                           "--mode", opt.mode
+                           ]
 
+        if opt.not_cuda:
+            inpainting_args.append("--not_cuda")
 
+        inpainting.main_inpainting(inpainting_args)
 
+    img_array = []
+    for i in range(nb_masked_frames):
+        dir2save = '%s/Inpainting/%s/%s_%d' % (opt.out, opt.input_name[:-4], opt.ref_name[:-4], i)
+        path_to_image = '%s/start_scale=%d_init=%s_inpainted.png' % (dir2save, opt.inpainting_start_scale, opt.initialization)
 
+        img = cv2.imread(path_to_image)
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
+
+    out = cv2.VideoWriter('%s/Inpainting/%s_inpainted_%s_initialization.avi' % (opt.out, opt.input_name[:-4], opt.initialization), cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
+
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()

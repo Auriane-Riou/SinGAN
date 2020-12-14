@@ -15,6 +15,7 @@ import random
 from sklearn.cluster import KMeans
 import cv2
 
+
 # custom weights initialization called on netG and netD
 
 
@@ -373,7 +374,13 @@ def load_trained_pyramid(opt, mode_='train'):
     opt.mode = 'train'
     if (mode == 'animation_train') | (mode == 'SR_train') | (mode == 'paint_train'):
         opt.mode = mode
-    dir = generate_dir2save(opt)
+
+    # for video inpainting, we load the model trained on the first image
+    if mode == "inpainting_video":
+        dir = 'TrainedModels/%s%d/scale_factor=%f,alpha=%d' % (opt.input_name[:-5], 0, opt.scale_factor_init, opt.alpha)
+    else:
+        dir = generate_dir2save(opt)
+
     if(os.path.exists(dir)):
         if opt.not_cuda:
             Gs = torch.load('%s/Gs.pth' % dir, map_location=torch.device('cpu'))
@@ -427,8 +434,8 @@ def generate_dir2save(opt):
         if opt.quantization_flag:
             dir2save = '%s_quantized' % dir2save
 
-    elif opt.mode == 'inpainting':
-        dir2save = '%s/Inpainting/%s/%s_out' % (opt.out, opt.input_name[:-4], opt.ref_name[:-4])
+    elif (opt.mode == 'inpainting') | (opt.mode == 'inpainting_video'):
+        dir2save = '%s/Inpainting/%s/%s' % (opt.out, opt.input_name[:-6], opt.ref_name[:-4])
 
     return dir2save
 
@@ -493,7 +500,7 @@ def dilate_mask(mask,opt):
         element = morphology.disk(radius=7)
     if opt.mode == "editing":
         element = morphology.disk(radius=20)
-    if opt.mode == "inpainting":
+    if (opt.mode == "inpainting") | (opt.mode == "inpainting_video"):
         element = morphology.disk(radius=opt.radius)
     mask = torch2uint8(mask)
     mask = mask[:,:,0]

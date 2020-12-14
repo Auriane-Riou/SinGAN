@@ -8,7 +8,7 @@ import torch
 import cv2
 
 
-def main():
+def main_inpainting(raw_args=None):
     parser = get_arguments()
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')
     parser.add_argument('--input_name', help='training image name', required=True)
@@ -18,12 +18,10 @@ def main():
     parser.add_argument('--radius', help='radius harmonization', type=int, default=10)
     parser.add_argument('--ref_name', help='training image name', type=str, default="")
     parser.add_argument('--initialization', help='initialization technique', type=str, default="mean")
-    parser.add_argument('--x1_mask', type=float, help='lower x bound for occlusion in inpainting', default=0.25)
-    parser.add_argument('--x2_mask', type=float, help='upper x bound for occlusion in inpainting', default=0.5)
-    parser.add_argument('--y1_mask', type=float, help='lower y bound for occlusion in inpainting', default=0.3)
-    parser.add_argument('--y2_mask', type=float, help='upper y bound for occlusion in inpainting', default=0.5)
+
 
     opt = parser.parse_args(raw_args)
+
     opt = functions.post_config(opt)
     if opt.ref_name == "":
         opt.ref_name = opt.input_name
@@ -47,40 +45,37 @@ def main():
 
         real = functions.read_image(opt)
         real_occluded = real.clone()
+        real_copy = real.clone()
 
         real = functions.adjust_scales2image(real, opt)
-        real_np = functions.convert_image_np(real)
+
 
         Gs, Zs, reals, NoiseAmp = functions.load_trained_pyramid(opt)
 
         if (opt.inpainting_start_scale < 1) | (opt.inpainting_start_scale > (len(Gs) - 1)):
-
             print("injection scale should be between 1 and %d" % (len(Gs) - 1))
         else:
 
             mask = functions.read_image_dir('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]),
-                                            opt)
+                                                opt)
 
             # saving original image in output folder for comparison
+
             plt.imsave('%s/start_scale=%d_original.png' % (dir2save, opt.inpainting_start_scale),
                        functions.convert_image_np(real), vmin=0, vmax=1)
-
-            # saving occluded image in output folder for comparison
-            plt.imsave('%s/start_scale=%d_occluded.png' % (dir2save, opt.inpainting_start_scale),
-                       functions.convert_image_np((1 - functions.denorm(mask)) * real), vmin=0, vmax=1)
 
             # random initialization
             if opt.initialization == "random":
                 unique_pixel_values = torch.unique(real)
-                real_occluded[mask == 1] = torch.tensor(
-                    [random.choice(unique_pixel_values) for _ in range(len(real[mask == 1]))])
+                real_occluded[functions.denorm(mask) == 1] = torch.tensor(
+                    [random.choice(unique_pixel_values) for _ in range(len(real_copy[functions.denorm(mask) == 1]))])
 
             # mean initialization
             elif opt.initialization == "mean":
                 # mean taken for each channel
                 for j in range(3):
-                    real_occluded[0, j, :, :][mask[0, j, :, :] == 1] = real_occluded[0, j, :, :][
-                        mask[0, j, :, :] == 1].mean()
+                    real_occluded[0, j, :, :][functions.denorm(mask)[0, j, :, :] == 1] = real_occluded[0, j, :, :][
+                        functions.denorm(mask)[0, j, :, :] == 0].mean()
 
             real_occluded_np = functions.convert_image_np(real_occluded)
             plt.imsave(
@@ -90,11 +85,16 @@ def main():
                 '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.ref_name[-4:]),
                 opt)
 
+            # saving occluded image in output folder for comparison
+            plt.imsave('%s/start_scale=%d_occluded.png' % (dir2save, opt.inpainting_start_scale),
+                       functions.convert_image_np((1 - functions.denorm(mask)) * real_copy), vmin=0, vmax=1)
+
             if ref.shape[3] != real.shape[3]:
                 mask = imresize_to_shape(mask, [real.shape[2], real.shape[3]], opt)
                 mask = mask[:, :, :real.shape[2], :real.shape[3]]
                 ref = imresize_to_shape(ref, [real.shape[2], real.shape[3]], opt)
                 ref = ref[:, :, :real.shape[2], :real.shape[3]]
+
 
             mask = functions.dilate_mask(mask, opt)
 
@@ -113,11 +113,11 @@ def main():
 
             # saving final image reconstitution (replacing occluded areas by the generated image)
             out = (1 - mask) * real + mask * out
+
             plt.imsave(
                 '%s/start_scale=%d_init=%s_inpainted.png' % (dir2save, opt.inpainting_start_scale, opt.initialization),
                 functions.convert_image_np(out.detach()), vmin=0, vmax=1)
 
 
 if __name__ == '__main__':
-    main()
-
+    main_inpainting()
