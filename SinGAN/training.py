@@ -19,18 +19,10 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
 
         source_img = cv2.imread('%s/%s' % (opt.input_dir, opt.input_name))
 
-        # FOR LOCAL EXECUTION (only for images):
-        # lets user select areas to occlude
-        # functions.get_occluded_area(source_img, opt)
-
-        # saves and reads mask image corresponding to those occluded areas
-        # computes_mask_inpainting(opt)
-        # mask = functions.read_image_dir('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]), opt)
-        # mask = functions.denorm(mask)
-
-        # FOR EXECUTION ON COLAB
-        # assumes that mask image already exists
-        assert os.path.exists('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:])), "Must provide an occlusion mask in dedicated folder first: " + '%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:])
+        assert os.path.exists('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:])), \
+            "Following mask does not exist: " + '%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:] +
+                                                                  "\nYou can run locally mask_selection.py to manually "
+                                                                  "create a mask file.")
         mask = functions.read_image_dir('%s/%s_mask%s' % (opt.ref_dir, opt.input_name[:-4], opt.input_name[-4:]), opt)
         mask = functions.denorm(mask)
 

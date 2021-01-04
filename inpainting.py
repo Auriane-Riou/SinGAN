@@ -12,7 +12,7 @@ def main_inpainting(raw_args=None):
     parser = get_arguments()
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')
     parser.add_argument('--input_name', help='training image name', required=True)
-    parser.add_argument('--ref_dir', help='input reference dir', default='Input/Inpainting')
+    parser.add_argument('--ref_dir', help='input reference dir', default='Input/Inpainting/Masks')
     parser.add_argument('--inpainting_start_scale', help='inpainting injection scale', type=int, required=True)
     parser.add_argument('--mode', help='task to be done', default='inpainting')
     parser.add_argument('--radius', help='radius harmonization', type=int, default=10)

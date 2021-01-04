@@ -11,7 +11,7 @@ def main(raw_args=None):
     parser.add_argument('--input_name', help='input image name', required=True)
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--inpainting', action='store_true', help='store true to train for inpainting')
-    parser.add_argument('--ref_dir', help='inpainting reference dir', default='Input/Inpainting')
+    parser.add_argument('--ref_dir', help='inpainting reference dir', default='Input/Inpainting/Masks')
 
     opt = parser.parse_args(raw_args)
     print(opt)
