@@ -97,6 +97,7 @@ def get_occluded_area(image, opt):
         cv2.putText(image, 'Please select areas for inpainting, then press escape', bottom_left_corner, font, 1, (255, 255, 255), 2)
         if cv2.waitKey(10) == 27:
             break
+
     cv2.destroyAllWindows()
 
 

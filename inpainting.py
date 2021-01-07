@@ -47,6 +47,9 @@ def main_inpainting(raw_args=None):
         real_occluded = real.clone()
         real_copy = real.clone()
 
+        plt.imshow(functions.convert_image_np(real_copy))
+        plt.show()
+
         real = functions.adjust_scales2image(real, opt)
 
 
@@ -78,6 +81,9 @@ def main_inpainting(raw_args=None):
                         functions.denorm(mask)[0, j, :, :] == 0].mean()
 
             real_occluded_np = functions.convert_image_np(real_occluded)
+            plt.imshow(functions.convert_image_np(real_copy*(1 - functions.denorm(mask))))
+            plt.show()
+
             plt.imsave(
                 '%s/%s_averaged_init=%s%s' % (opt.input_dir, opt.ref_name[:-4], opt.initialization, opt.input_name[-4:]),
                 real_occluded_np, vmin=0, vmax=1)

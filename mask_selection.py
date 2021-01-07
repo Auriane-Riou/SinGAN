@@ -17,13 +17,13 @@ def main(raw_args=None):
     opt = functions.post_config(opt)
     print(opt)
 
-
-
     source_img = cv2.imread('%s/%s' % (opt.input_dir, opt.input_name))
 
     # FOR LOCAL EXECUTION (only for images):
     # lets user select areas to occlude
     functions.get_occluded_area(source_img, opt)
+
+    print(opt.occlusions)
 
     # saves mask image corresponding to those occluded areas
     computes_mask_inpainting(opt)
